@@ -1,0 +1,343 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<meta name="theme-color" content="#0B0D12">
+<title>Orbiway · Entregas</title>
+<style>
+  :root {
+    --bg: #0B0D12; --card: #161A23; --linha: #262C3A; --texto: #F5F7FB; --suave: #AEB4C4;
+    --amarelo: #FFD400; --verde: #2E9E4F; --vermelho: #D93025;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--bg); color: var(--texto);
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; -webkit-text-size-adjust: 100%; }
+  main { max-width: 640px; margin: 0 auto; padding: 16px 16px 120px; }
+  h1 { font-size: 1.35rem; margin: 4px 0 2px; letter-spacing: .02em; }
+  h1 b { color: var(--amarelo); }
+  .sub { color: var(--suave); font-size: .9rem; margin: 0 0 14px; }
+  .barra { height: 8px; background: var(--linha); border-radius: 99px; overflow: hidden; margin: 10px 0 4px; }
+  .barra i { display: block; height: 100%; width: 0; background: var(--amarelo); transition: width .2s; }
+  .contagem { color: var(--suave); font-size: .85rem; }
+  label.campo { display: block; margin: 14px 0 6px; font-size: .85rem; color: var(--suave); }
+  input[type=text], select, textarea { width: 100%; padding: 12px; font-size: 1rem; color: var(--texto);
+    background: var(--card); border: 1px solid var(--linha); border-radius: 10px; }
+  textarea { min-height: 64px; resize: vertical; }
+  .parada { background: var(--card); border: 1px solid var(--linha); border-left: 5px solid var(--linha);
+    border-radius: 12px; padding: 14px; margin: 12px 0; }
+  .parada.ok { border-left-color: var(--verde); }
+  .parada.falha { border-left-color: var(--vermelho); }
+  .topo { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }
+  .num { font-weight: 700; color: var(--amarelo); font-size: 1.1rem; }
+  .ref { color: var(--suave); font-size: .8rem; text-align: right; }
+  .cliente { font-weight: 600; font-size: 1.05rem; margin: 6px 0 2px; }
+  .endereco { color: var(--suave); font-size: .95rem; }
+  .acoes { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 12px; }
+  button, .botao { appearance: none; border: 0; border-radius: 10px; padding: 14px 10px; font-size: 1rem;
+    font-weight: 700; color: #fff; text-align: center; text-decoration: none; cursor: pointer; }
+  .entregue { background: var(--verde); }
+  .nao { background: var(--vermelho); }
+  .mapa { display: inline-block; margin-top: 8px; color: var(--amarelo); font-size: .9rem; text-decoration: none; }
+  .neutro { background: var(--linha); color: var(--texto); }
+  .estado { margin-top: 10px; font-size: .9rem; }
+  .estado b { color: var(--texto); }
+  .aviso { color: var(--amarelo); font-size: .85rem; margin-top: 6px; }
+  .detalhe { margin-top: 10px; }
+  .rodape { position: fixed; left: 0; right: 0; bottom: 0; padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
+    background: rgba(11,13,18,.96); border-top: 1px solid var(--linha); }
+  .rodape .dentro { max-width: 640px; margin: 0 auto; }
+  .enviar { width: 100%; background: var(--amarelo); color: #111; font-size: 1.05rem; }
+  .erro { background: var(--card); border: 1px solid var(--vermelho); border-radius: 12px; padding: 16px; margin-top: 24px; }
+  .oculto { display: none !important; }
+</style>
+</head>
+<body>
+<main id="app">
+  <p class="sub">Carregando a rota...</p>
+</main>
+<div class="rodape oculto" id="rodape">
+  <div class="dentro">
+    <p class="aviso oculto" id="avisoEnvio"></p>
+    <button class="enviar" id="enviar" type="button">Enviar retorno pelo WhatsApp</button>
+  </div>
+</div>
+
+<script>
+"use strict";
+
+const MOTIVOS = ["Cliente ausente", "Endereço não encontrado", "Cliente recusou", "Não coube no carro",
+                 "Produto avariado", "Produto faltando", "Outro"];
+const app = document.getElementById("app");
+let rota = null;
+let marcas = {};
+let motorista = "";
+let chaveLocal = "";
+
+function b64urlParaBytes(texto) {
+  const b64 = texto.replace(/-/g, "+").replace(/_/g, "/") + "===".slice((texto.length + 3) % 4);
+  const bin = atob(b64);
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return bytes;
+}
+
+function bytesParaB64url(bytes) {
+  let bin = "";
+  for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
+  return btoa(bin).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+
+async function passarPorStream(bytes, stream) {
+  const saida = new Blob([bytes]).stream().pipeThrough(stream);
+  return new Uint8Array(await new Response(saida).arrayBuffer());
+}
+
+async function lerRotaDoLink() {
+  // Os dados vêm depois do "#": o navegador não envia essa parte para o servidor.
+  const fragmento = location.hash.slice(1);
+  if (!fragmento.startsWith("z.")) throw new Error("Link incompleto. Peça um novo link para o CD.");
+  if (typeof DecompressionStream === "undefined") {
+    throw new Error("Este navegador está desatualizado. Atualize o Chrome (ou o Safari) e abra o link de novo.");
+  }
+  const bytes = await passarPorStream(b64urlParaBytes(fragmento.slice(2)), new DecompressionStream("deflate"));
+  return JSON.parse(new TextDecoder().decode(bytes));
+}
+
+function salvar() {
+  try { localStorage.setItem(chaveLocal, JSON.stringify({ marcas, motorista })); } catch (e) { /* aba anônima */ }
+}
+
+function carregar() {
+  try {
+    const salvo = JSON.parse(localStorage.getItem(chaveLocal) || "null");
+    if (salvo) { marcas = salvo.marcas || {}; motorista = salvo.motorista || ""; }
+    if (!motorista) motorista = localStorage.getItem("orbiway:motorista") || "";
+  } catch (e) { /* sem armazenamento: segue só na memória */ }
+}
+
+function distanciaMetros(lat1, lon1, lat2, lon2) {
+  const r = 6371000, rad = Math.PI / 180;
+  const dLat = (lat2 - lat1) * rad, dLon = (lon2 - lon1) * rad;
+  const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1 * rad) * Math.cos(lat2 * rad) * Math.sin(dLon / 2) ** 2;
+  return Math.round(2 * r * Math.asin(Math.sqrt(a)));
+}
+
+function pegarLocalizacao() {
+  return new Promise((resolve) => {
+    if (!navigator.geolocation) return resolve(null);
+    navigator.geolocation.getCurrentPosition(
+      (p) => resolve({ lat: p.coords.latitude, lon: p.coords.longitude, precisao: Math.round(p.coords.accuracy) }),
+      () => resolve(null),
+      // Posição de até 15 s atrás é aceita: vizinhos marcados em sequência não esperam outro sinal do GPS.
+      { enableHighAccuracy: true, timeout: 12000, maximumAge: 15000 }
+    );
+  });
+}
+
+function el(tag, classe, texto) {
+  const e = document.createElement(tag);
+  if (classe) e.className = classe;
+  if (texto !== undefined) e.textContent = texto;
+  return e;
+}
+
+function hora(segundos) {
+  return new Date(segundos * 1000).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+}
+
+function dataBr(iso) {
+  const [a, m, d] = iso.split("-");
+  return `${d}/${m}/${a}`;
+}
+
+async function marcar(indice, situacao, motivo, observacao, cartao) {
+  const botoes = cartao.querySelectorAll("button");
+  botoes.forEach((b) => (b.disabled = true));
+  const estado = cartao.querySelector(".estado");
+  estado.textContent = "Pegando a localização...";
+  const local = await pegarLocalizacao();
+  const parada = rota.p[indice];
+  const marca = { s: situacao, m: motivo || "", o: observacao || "", t: Math.floor(Date.now() / 1000) };
+  if (local) {
+    marca.dm = distanciaMetros(local.lat, local.lon, parada[6], parada[7]);
+    marca.ac = local.precisao;
+  }
+  marcas[indice] = marca;
+  salvar();
+  desenhar();
+}
+
+function desfazer(indice) {
+  delete marcas[indice];
+  salvar();
+  desenhar();
+}
+
+function cartaoParada(parada, indice) {
+  const [filial, orcamento, loja, cliente, endereco, bairro, lat, lon] = parada;
+  const marca = marcas[indice];
+  const cartao = el("section", "parada" + (marca ? (marca.s === "E" ? " ok" : " falha") : ""));
+  const topo = el("div", "topo");
+  topo.append(el("span", "num", `Parada ${indice + 1}`), el("span", "ref", `Loja ${loja} · Orç. ${orcamento}`));
+  cartao.append(topo, el("div", "cliente", cliente || "Cliente não informado"),
+                el("div", "endereco", [endereco, bairro].filter(Boolean).join(" · ")));
+  const mapa = el("a", "mapa", "Abrir no mapa");
+  mapa.href = `https://www.google.com/maps/search/?api=1&query=${lat},${lon}`;
+  mapa.target = "_blank";
+  mapa.rel = "noopener";
+  cartao.append(mapa);
+  const estado = el("div", "estado");
+  cartao.append(estado);
+
+  if (marca) {
+    const texto = marca.s === "E" ? "Entregue" : `Não entregue: ${marca.m}`;
+    estado.innerHTML = "";
+    estado.append(el("b", "", texto), document.createTextNode(` às ${hora(marca.t)}`));
+    if (marca.o) estado.append(el("div", "", `Obs.: ${marca.o}`));
+    if (marca.dm === undefined) estado.append(el("div", "aviso", "Sem localização: confira se o GPS está ligado."));
+    const acoes = el("div", "acoes");
+    const botao = el("button", "neutro", "Desfazer");
+    botao.type = "button";
+    botao.onclick = () => desfazer(indice);
+    acoes.append(botao);
+    cartao.append(acoes);
+    return cartao;
+  }
+
+  const acoes = el("div", "acoes");
+  const ok = el("button", "entregue", "Entregue");
+  const nao = el("button", "nao", "Não entregue");
+  ok.type = nao.type = "button";
+  acoes.append(ok, nao);
+  cartao.append(acoes);
+
+  const detalhe = el("div", "detalhe oculto");
+  const rotuloMotivo = el("label", "campo", "Motivo");
+  const motivo = el("select");
+  motivo.append(el("option", "", "Escolha o motivo"));
+  motivo.firstChild.value = "";
+  MOTIVOS.forEach((m) => { const o = el("option", "", m); o.value = m; motivo.append(o); });
+  const rotuloObs = el("label", "campo", "Observação (opcional)");
+  const obs = el("textarea");
+  obs.maxLength = 140;
+  const confirmar = el("button", "nao", "Confirmar não entregue");
+  confirmar.type = "button";
+  confirmar.style.width = "100%";
+  confirmar.style.marginTop = "10px";
+  detalhe.append(rotuloMotivo, motivo, rotuloObs, obs, confirmar);
+  cartao.append(detalhe);
+
+  ok.onclick = () => marcar(indice, "E", "", "", cartao);
+  nao.onclick = () => detalhe.classList.toggle("oculto");
+  confirmar.onclick = () => {
+    if (!motivo.value) { estado.textContent = "Escolha o motivo antes de confirmar."; return; }
+    if (motivo.value === "Outro" && !obs.value.trim()) { estado.textContent = "Em \"Outro\", descreva na observação."; return; }
+    marcar(indice, "N", motivo.value, obs.value.trim(), cartao);
+  };
+  return cartao;
+}
+
+function desenhar() {
+  const total = rota.p.length;
+  const feitas = Object.keys(marcas).length;
+  app.innerHTML = "";
+  const titulo = el("h1");
+  titulo.append(document.createTextNode("Rota "), el("b", "", String(rota.r)));
+  app.append(titulo, el("p", "sub", `Entregas de ${dataBr(rota.d)}`));
+  const barra = el("div", "barra");
+  const cheio = el("i");
+  cheio.style.width = `${total ? Math.round((feitas / total) * 100) : 0}%`;
+  barra.append(cheio);
+  app.append(barra, el("div", "contagem", `${feitas} de ${total} marcadas`));
+
+  const rotulo = el("label", "campo", "Seu nome");
+  const nome = el("input");
+  nome.type = "text";
+  nome.value = motorista;
+  nome.autocomplete = "name";
+  nome.oninput = () => {
+    motorista = nome.value.trim();
+    salvar();
+    try { localStorage.setItem("orbiway:motorista", motorista); } catch (e) { /* sem armazenamento */ }
+  };
+  rotulo.htmlFor = nome.id = "nome";
+  app.append(rotulo, nome);
+
+  rota.p.forEach((parada, indice) => app.append(cartaoParada(parada, indice)));
+  document.getElementById("rodape").classList.remove("oculto");
+}
+
+async function montarRetorno() {
+  const pacote = {
+    v: 1, id: rota.id, r: rota.r, d: rota.d, mo: motorista,
+    e: rota.p.map((parada, indice) => {
+      const m = marcas[indice];
+      return [parada[0], parada[1], parada[2], parada[3], m ? m.s : "P", m ? m.m : "", m ? m.o : "",
+              m ? m.t : null, m && m.dm !== undefined ? m.dm : null, m && m.ac !== undefined ? m.ac : null];
+    }),
+  };
+  const json = new TextEncoder().encode(JSON.stringify(pacote));
+  let codigo;
+  if (typeof CompressionStream !== "undefined") {
+    codigo = "ORB1." + bytesParaB64url(await passarPorStream(json, new CompressionStream("deflate")));
+  } else {
+    codigo = "ORB0." + bytesParaB64url(json);
+  }
+  const entregues = pacote.e.filter((x) => x[4] === "E").length;
+  const falhas = pacote.e.filter((x) => x[4] === "N");
+  const pendentes = pacote.e.filter((x) => x[4] === "P").length;
+  const linhas = [
+    `Orbiway: retorno da rota ${rota.r} (${dataBr(rota.d)})`,
+    `Motorista: ${motorista}`,
+    `Entregues: ${entregues} | Não entregues: ${falhas.length} | Sem marcação: ${pendentes}`,
+  ];
+  if (falhas.length) {
+    linhas.push("Não entregues:");
+    falhas.forEach((x) => linhas.push(`- ${x[1]} ${x[3] || ""}: ${x[5]}`.replace(/\s+:/, ":")));
+  }
+  linhas.push("", codigo);
+  return linhas.join("\n");
+}
+
+document.getElementById("enviar").onclick = async () => {
+  const aviso = document.getElementById("avisoEnvio");
+  aviso.classList.add("oculto");
+  if (!motorista) {
+    aviso.textContent = "Preencha seu nome no topo antes de enviar.";
+    aviso.classList.remove("oculto");
+    document.getElementById("nome").focus();
+    return;
+  }
+  const pendentes = rota.p.length - Object.keys(marcas).length;
+  const botao = document.getElementById("enviar");
+  // Primeiro toque com parada sem marcação só avisa; o segundo envia assim mesmo.
+  if (pendentes && !botao.dataset.confirmado) {
+    aviso.textContent = `${pendentes} parada(s) sem marcação. Toque de novo para enviar assim mesmo.`;
+    aviso.classList.remove("oculto");
+    botao.dataset.confirmado = "1";
+    return;
+  }
+  delete botao.dataset.confirmado;
+  const texto = await montarRetorno();
+  location.href = `https://wa.me/${rota.w}?text=${encodeURIComponent(texto)}`;
+};
+
+(async () => {
+  try {
+    rota = await lerRotaDoLink();
+    if (!rota || rota.v !== 1 || !Array.isArray(rota.p)) throw new Error("Link inválido. Peça um novo link para o CD.");
+    chaveLocal = `orbiway:${rota.id}`;
+    carregar();
+    desenhar();
+  } catch (erro) {
+    app.innerHTML = "";
+    const caixa = el("div", "erro");
+    caixa.append(el("h1", "", "Não foi possível abrir a rota"), el("p", "sub", erro.message || String(erro)));
+    app.append(caixa);
+  }
+})();
+</script>
+</body>
+</html>
