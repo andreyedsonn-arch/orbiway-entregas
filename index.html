@@ -4,63 +4,180 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex">
-<meta name="theme-color" content="#0B0D12">
+<meta name="theme-color" content="#0A0B0F">
 <title>Orbiway · Entregas</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&display=swap" rel="stylesheet">
 <style>
   :root {
-    --bg: #0B0D12; --card: #161A23; --linha: #262C3A; --texto: #F5F7FB; --suave: #AEB4C4;
-    --amarelo: #FFD400; --verde: #2E9E4F; --vermelho: #D93025;
+    --bg: #0A0B0F; --card: #14171F; --card-2: #1A1E28; --linha: #262B38; --texto: #F5F7FB; --suave: #9AA1B2;
+    --amarelo: #FFD400; --verde: #22A55A; --verde-fundo: rgba(34,165,90,.14);
+    --vermelho: #E5483B; --vermelho-fundo: rgba(229,72,59,.14);
+    --laranja: #F2A33A; --laranja-fundo: rgba(242,163,58,.15);
+    --titulo: "Oswald", "Arial Narrow", system-ui, sans-serif;
   }
-  * { box-sizing: border-box; }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   html, body { margin: 0; background: var(--bg); color: var(--texto);
     font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; -webkit-text-size-adjust: 100%; }
-  main { max-width: 640px; margin: 0 auto; padding: 16px 16px 120px; }
-  h1 { font-size: 1.35rem; margin: 4px 0 2px; letter-spacing: .02em; }
-  h1 b { color: var(--amarelo); }
-  .sub { color: var(--suave); font-size: .9rem; margin: 0 0 14px; }
-  .barra { height: 8px; background: var(--linha); border-radius: 99px; overflow: hidden; margin: 10px 0 4px; }
-  .barra i { display: block; height: 100%; width: 0; background: var(--amarelo); transition: width .2s; }
-  .contagem { color: var(--suave); font-size: .85rem; }
-  label.campo { display: block; margin: 14px 0 6px; font-size: .85rem; color: var(--suave); }
-  input[type=text], select, textarea { width: 100%; padding: 12px; font-size: 1rem; color: var(--texto);
-    background: var(--card); border: 1px solid var(--linha); border-radius: 10px; }
-  textarea { min-height: 64px; resize: vertical; }
-  .parada { background: var(--card); border: 1px solid var(--linha); border-left: 5px solid var(--linha);
-    border-radius: 12px; padding: 14px; margin: 12px 0; }
-  .parada.ok { border-left-color: var(--verde); }
-  .parada.falha { border-left-color: var(--vermelho); }
-  .topo { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }
-  .num { font-weight: 700; color: var(--amarelo); font-size: 1.1rem; }
-  .ref { color: var(--suave); font-size: .8rem; text-align: right; }
-  .cliente { font-weight: 600; font-size: 1.05rem; margin: 6px 0 2px; }
-  .endereco { color: var(--suave); font-size: .95rem; }
-  .acoes { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 12px; }
-  button, .botao { appearance: none; border: 0; border-radius: 10px; padding: 14px 10px; font-size: 1rem;
-    font-weight: 700; color: #fff; text-align: center; text-decoration: none; cursor: pointer; }
-  .entregue { background: var(--verde); }
-  .nao { background: var(--vermelho); }
-  .mapa { display: inline-block; margin-top: 8px; color: var(--amarelo); font-size: .9rem; text-decoration: none; }
-  .neutro { background: var(--linha); color: var(--texto); }
-  .estado { margin-top: 10px; font-size: .9rem; }
-  .estado b { color: var(--texto); }
-  .aviso { color: var(--amarelo); font-size: .85rem; margin-top: 6px; }
-  .detalhe { margin-top: 10px; }
-  .rodape { position: fixed; left: 0; right: 0; bottom: 0; padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
-    background: rgba(11,13,18,.96); border-top: 1px solid var(--linha); }
-  .rodape .dentro { max-width: 640px; margin: 0 auto; }
-  .enviar { width: 100%; background: var(--amarelo); color: #111; font-size: 1.05rem; }
-  .erro { background: var(--card); border: 1px solid var(--vermelho); border-radius: 12px; padding: 16px; margin-top: 24px; }
+  button { font: inherit; }
   .oculto { display: none !important; }
+
+  /* Topo fixo: rota, data e progresso sempre visíveis enquanto o motorista rola a lista. */
+  .topo { position: sticky; top: 0; z-index: 5; background: linear-gradient(180deg, #0A0B0F 78%, rgba(10,11,15,0));
+    padding: calc(12px + env(safe-area-inset-top)) 16px 14px; }
+  .topo .dentro, main, .rodape .dentro { max-width: 620px; margin: 0 auto; }
+  .marca { font-family: var(--titulo); font-weight: 600; font-size: .78rem; letter-spacing: .32em; color: var(--amarelo); }
+  .linha-titulo { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-top: 2px; }
+  h1 { font-family: var(--titulo); font-weight: 700; font-size: 1.7rem; letter-spacing: .03em; margin: 0; line-height: 1.1; }
+  .data { color: var(--suave); font-size: .9rem; white-space: nowrap; }
+  .progresso { margin-top: 12px; }
+  .barra { display: flex; height: 8px; background: var(--linha); border-radius: 99px; overflow: hidden; }
+  .barra i { display: block; height: 100%; transition: width .25s ease; }
+  .barra .ok { background: var(--verde); }
+  .barra .falha { background: var(--vermelho); }
+  .barra .parcial { background: var(--laranja); }
+  .contagens { display: flex; flex-wrap: wrap; gap: 4px 12px; margin-top: 8px; font-size: .82rem; color: var(--suave); }
+  .contagens b { color: var(--texto); font-weight: 700; }
+  .ponto { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; vertical-align: 1px; }
+
+  main { padding: 0 16px 150px; }
+  .motorista { display: flex; align-items: center; gap: 10px; background: var(--card); border: 1px solid var(--linha);
+    border-radius: 14px; padding: 10px 14px; margin-bottom: 14px; }
+  .motorista label { font-family: var(--titulo); letter-spacing: .14em; font-size: .72rem; color: var(--suave); text-transform: uppercase; }
+  .motorista input { flex: 1; min-width: 0; background: transparent; border: 0; color: var(--texto); font-size: 1.05rem;
+    padding: 6px 0; outline: none; }
+  .motorista input::placeholder { color: #5D6476; }
+  .motorista.falta { border-color: var(--amarelo); }
+  .motorista .fixo { flex: 1; font-size: 1.05rem; font-weight: 600; padding: 6px 0; }
+
+  .parada { background: var(--card); border: 1px solid var(--linha); border-radius: 14px; margin: 0 0 10px;
+    overflow: hidden; transition: border-color .2s; }
+  .parada.proxima { border-color: var(--amarelo); box-shadow: 0 0 0 1px var(--amarelo) inset; }
+  .cab { display: flex; gap: 12px; padding: 12px 12px 0; }
+  .num { flex: 0 0 auto; width: 34px; height: 34px; border-radius: 10px; display: grid; place-items: center;
+    background: var(--card-2); border: 1px solid var(--linha); font-family: var(--titulo); font-weight: 700; font-size: 1rem; }
+  .proxima .num { background: var(--amarelo); color: #111; border-color: var(--amarelo); }
+  .info { min-width: 0; flex: 1; }
+  .selo { font-family: var(--titulo); font-size: .68rem; letter-spacing: .2em; color: var(--amarelo); margin-bottom: 2px; }
+  .cliente { font-weight: 700; font-size: 1rem; line-height: 1.25; }
+  .endereco { color: #C9CEDA; font-size: .9rem; margin-top: 2px; line-height: 1.35; }
+  .detalhes { color: var(--suave); font-size: .78rem; margin-top: 4px; }
+  .mapa { flex: 0 0 auto; align-self: flex-start; width: 38px; height: 38px; border-radius: 10px; display: grid; place-items: center;
+    background: var(--card-2); border: 1px solid var(--linha); color: var(--amarelo); }
+  .mapa svg { width: 20px; height: 20px; }
+  .lado { flex: 0 0 auto; display: flex; flex-direction: column; gap: 8px; }
+  .ligar { color: #7CE0A3; }
+  .referencia { margin-top: 6px; font-size: .86rem; color: #E8D9A0; line-height: 1.35; }
+  .referencia b, .obs-pedido b { font-family: var(--titulo); font-weight: 600; letter-spacing: .08em; font-size: .7rem;
+    color: var(--amarelo); margin-right: 4px; }
+  .obs-pedido { margin-top: 4px; font-size: .84rem; color: #C9CEDA; line-height: 1.35; }
+  .produtos { list-style: none; margin: 8px 0 0; padding: 8px 10px; background: var(--card-2); border-radius: 10px;
+    border: 1px solid var(--linha); font-size: .8rem; color: #C9CEDA; }
+  .produtos li { display: flex; gap: 8px; line-height: 1.5; }
+  .produtos .qtd { flex: 0 0 auto; min-width: 26px; color: var(--amarelo); font-weight: 700; }
+  .link-parcial { display: block; width: calc(100% - 24px); margin: -4px 12px 12px; background: none; border: 1px dashed var(--linha);
+    border-radius: 10px; color: var(--laranja); padding: 9px; font-size: .86rem; cursor: pointer; }
+  .link-parcial.ativo { border-style: solid; border-color: var(--laranja); background: var(--laranja-fundo); }
+  .parcial-bloco { padding: 0 12px 12px; }
+  .parcial-bloco .rotulo { font-family: var(--titulo); font-size: .72rem; letter-spacing: .16em; color: var(--suave); margin: 4px 0 8px; }
+  .item-volta { display: flex; align-items: center; gap: 10px; width: 100%; text-align: left; background: var(--card-2);
+    border: 1px solid var(--linha); border-radius: 10px; color: var(--texto); padding: 10px 12px; margin-bottom: 6px;
+    font-size: .86rem; cursor: pointer; }
+  .item-volta .marcador { flex: 0 0 auto; font-family: var(--titulo); font-size: .7rem; letter-spacing: .1em; padding: 3px 8px;
+    border-radius: 99px; background: var(--verde-fundo); color: #7CE0A3; }
+  .item-volta.voltou { border-color: var(--laranja); }
+  .item-volta.voltou .marcador { background: var(--laranja-fundo); color: var(--laranja); }
+  .btn.confirmar-parcial { width: 100%; background: var(--laranja); color: #111; margin-top: 12px; }
+  .parcial-bloco .opcao.escolhida { background: var(--laranja-fundo); border-color: var(--laranja); color: var(--laranja); }
+  .pilula.parcial { background: var(--laranja-fundo); color: var(--laranja); }
+  .parada.feita.parcial .num { background: var(--laranja-fundo); border-color: var(--laranja); color: var(--laranja); }
+  .voltaram { margin-top: 6px; font-size: .82rem; color: #F5C98A; }
+  .recebeu { margin-top: 8px; }
+  .recebeu .rotulo { font-family: var(--titulo); font-size: .68rem; letter-spacing: .16em; color: var(--suave); margin-bottom: 6px; }
+  .recebeu .opcoes { gap: 6px; }
+  .recebeu .opcao { padding: 6px 10px; font-size: .8rem; }
+  .recebeu .opcao.escolhida { background: var(--verde-fundo); border-color: var(--verde); color: #7CE0A3; }
+  .recebeu input { width: 100%; margin-top: 8px; background: var(--card-2); color: var(--texto); border: 1px solid var(--linha);
+    border-radius: 10px; padding: 8px 10px; font: inherit; font-size: .88rem; }
+  .faixa { border-radius: 14px; padding: 12px 14px; margin-bottom: 12px; font-size: .9rem; line-height: 1.4; }
+  .faixa b { font-family: var(--titulo); letter-spacing: .08em; font-size: 1rem; display: block; margin-bottom: 2px; }
+  .faixa.concluida { background: var(--verde-fundo); border: 1px solid var(--verde); color: #BDF0D0; }
+  .faixa.enviada { background: var(--card); border: 1px solid var(--linha); color: var(--suave); }
+  @keyframes chamar { 0%, 100% { box-shadow: 0 0 0 0 rgba(255,212,0,.55); } 50% { box-shadow: 0 0 0 10px rgba(255,212,0,0); } }
+  .enviar.chamar { animation: chamar 1.6s ease-in-out infinite; }
+
+  .acoes { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 12px; }
+  .btn { display: flex; align-items: center; justify-content: center; gap: 8px; border: 0; border-radius: 12px;
+    min-height: 44px; padding: 0 10px; font-family: var(--titulo); font-weight: 600; font-size: .9rem; letter-spacing: .04em;
+    text-transform: uppercase; white-space: nowrap; cursor: pointer; }
+  .btn svg { width: 17px; height: 17px; flex: 0 0 auto; }
+  .btn:disabled { opacity: .5; }
+  .btn.entregue { background: var(--verde); color: #fff; }
+  /* Só a próxima entrega leva o verde cheio; as demais ficam em contorno para a lista não pesar. */
+  .parada:not(.proxima) .btn.entregue { background: transparent; color: #4FD17F; border: 1.5px solid var(--verde); }
+  .btn.nao { background: transparent; color: var(--vermelho); border: 1.5px solid var(--vermelho); }
+  .btn.nao.ativo { background: var(--vermelho-fundo); }
+  .btn.confirmar { width: 100%; background: var(--vermelho); color: #fff; margin-top: 12px; }
+
+  .motivos { padding: 0 12px 12px; }
+  .motivos .rotulo { font-family: var(--titulo); font-size: .72rem; letter-spacing: .16em; color: var(--suave); margin: 2px 0 8px; }
+  .opcoes { display: flex; flex-wrap: wrap; gap: 8px; }
+  .opcao { border: 1px solid var(--linha); background: var(--card-2); color: var(--texto); border-radius: 99px;
+    padding: 8px 12px; font-size: .86rem; cursor: pointer; }
+  .opcao.escolhida { background: var(--vermelho-fundo); border-color: var(--vermelho); color: #FFB3AC; }
+  .motivos textarea, .parcial-bloco textarea { width: 100%; margin-top: 10px; min-height: 60px; resize: vertical; background: var(--card-2);
+    color: var(--texto); border: 1px solid var(--linha); border-radius: 12px; padding: 10px 12px; font: inherit; font-size: .95rem; }
+  .erro-campo { color: var(--amarelo); font-size: .85rem; margin-top: 8px; }
+
+  /* Parada feita vira uma linha compacta: a lista encolhe conforme a rota anda. */
+  .parada.feita .cab { padding-bottom: 12px; }
+  .parada.feita .num { background: var(--verde-fundo); border-color: var(--verde); color: #7CE0A3; }
+  .parada.feita.falha .num { background: var(--vermelho-fundo); border-color: var(--vermelho); color: #FFB3AC; }
+  .parada.feita .cliente { font-size: .98rem; }
+  .status { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 6px; font-size: .86rem; }
+  .pilula { font-family: var(--titulo); font-size: .74rem; letter-spacing: .1em; text-transform: uppercase; border-radius: 99px;
+    padding: 3px 10px; }
+  .pilula.ok { background: var(--verde-fundo); color: #7CE0A3; }
+  .pilula.falha { background: var(--vermelho-fundo); color: #FFB3AC; }
+  .hora { color: var(--suave); }
+  .sem-gps { color: var(--amarelo); font-size: .8rem; margin-top: 4px; }
+  .desfazer { background: none; border: 0; color: var(--suave); text-decoration: underline; font-size: .84rem; padding: 4px 0;
+    cursor: pointer; }
+
+  .secao { font-family: var(--titulo); font-size: .76rem; letter-spacing: .22em; color: var(--suave); margin: 22px 2px 10px; }
+
+  .rodape { position: fixed; left: 0; right: 0; bottom: 0; z-index: 6; padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
+    background: rgba(10,11,15,.96); border-top: 1px solid var(--linha); backdrop-filter: blur(6px); }
+  .aviso { color: var(--amarelo); font-size: .86rem; margin: 0 0 8px; text-align: center; }
+  .enviar { width: 100%; min-height: 50px; background: var(--amarelo); color: #111; font-size: 1rem; }
+  .enviar svg { width: 20px; height: 20px; }
+
+  .erro { background: var(--card); border: 1px solid var(--vermelho); border-radius: 16px; padding: 20px; margin-top: 30px; }
+  .erro h2 { font-family: var(--titulo); margin: 0 0 6px; font-size: 1.3rem; }
+  .erro p { color: var(--suave); margin: 0; }
+  .carregando { color: var(--suave); text-align: center; margin-top: 40px; }
 </style>
 </head>
 <body>
-<main id="app">
-  <p class="sub">Carregando a rota...</p>
-</main>
+<header class="topo oculto" id="topo">
+  <div class="dentro">
+    <div class="marca">ORBIWAY · CD4</div>
+    <div class="linha-titulo"><h1 id="titulo">Rota</h1><span class="data" id="data"></span></div>
+    <div class="progresso">
+      <div class="barra"><i class="ok" id="barraOk"></i><i class="parcial" id="barraParcial"></i><i class="falha" id="barraFalha"></i></div>
+      <div class="contagens" id="contagens"></div>
+    </div>
+  </div>
+</header>
+<main id="app"><p class="carregando">Carregando a rota...</p></main>
 <div class="rodape oculto" id="rodape">
   <div class="dentro">
     <p class="aviso oculto" id="avisoEnvio"></p>
-    <button class="enviar" id="enviar" type="button">Enviar retorno pelo WhatsApp</button>
+    <button class="btn enviar" id="enviar" type="button">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2 11 13"/><path d="M22 2 15 22l-4-9-9-4 20-7z"/></svg>
+      Enviar retorno
+    </button>
   </div>
 </div>
 
@@ -69,11 +186,22 @@
 
 const MOTIVOS = ["Cliente ausente", "Endereço não encontrado", "Cliente recusou", "Não coube no carro",
                  "Produto avariado", "Produto faltando", "Outro"];
+const QUEM_RECEBEU = ["Própria pessoa", "Familiar", "Vizinho", "Porteiro", "Outro"];
+const MOTIVOS_PARCIAL = ["Produto avariado", "Produto faltando", "Cliente recusou o produto", "Não coube no carro", "Outro"];
+const ICONES = {
+  ligar: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.4 1.8.7 2.7a2 2 0 0 1-.5 2.1L8 9.8a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.7.7a2 2 0 0 1 1.7 2z"/></svg>',
+  ok: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>',
+  nao: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>',
+  mapa: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s7-6.2 7-12a7 7 0 1 0-14 0c0 5.8 7 12 7 12z"/><circle cx="12" cy="10" r="2.6"/></svg>',
+};
 const app = document.getElementById("app");
 let rota = null;
 let marcas = {};
 let motorista = "";
 let chaveLocal = "";
+let abertaFalha = null;
+let abertaParcial = null;
+let enviadoEm = null;
 
 function b64urlParaBytes(texto) {
   const b64 = texto.replace(/-/g, "+").replace(/_/g, "/") + "===".slice((texto.length + 3) % 4);
@@ -106,13 +234,13 @@ async function lerRotaDoLink() {
 }
 
 function salvar() {
-  try { localStorage.setItem(chaveLocal, JSON.stringify({ marcas, motorista })); } catch (e) { /* aba anônima */ }
+  try { localStorage.setItem(chaveLocal, JSON.stringify({ marcas, motorista, enviadoEm })); } catch (e) { /* aba anônima */ }
 }
 
 function carregar() {
   try {
     const salvo = JSON.parse(localStorage.getItem(chaveLocal) || "null");
-    if (salvo) { marcas = salvo.marcas || {}; motorista = salvo.motorista || ""; }
+    if (salvo) { marcas = salvo.marcas || {}; motorista = salvo.motorista || ""; enviadoEm = salvo.enviadoEm || null; }
     if (!motorista) motorista = localStorage.getItem("orbiway:motorista") || "";
   } catch (e) { /* sem armazenamento: segue só na memória */ }
 }
@@ -143,6 +271,14 @@ function el(tag, classe, texto) {
   return e;
 }
 
+function botao(classe, icone, texto) {
+  const b = el("button", "btn " + classe);
+  b.type = "button";
+  b.innerHTML = ICONES[icone] || "";
+  b.append(document.createTextNode(texto));
+  return b;
+}
+
 function hora(segundos) {
   return new Date(segundos * 1000).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
 }
@@ -152,121 +288,336 @@ function dataBr(iso) {
   return `${d}/${m}/${a}`;
 }
 
-async function marcar(indice, situacao, motivo, observacao, cartao) {
-  const botoes = cartao.querySelectorAll("button");
-  botoes.forEach((b) => (b.disabled = true));
-  const estado = cartao.querySelector(".estado");
-  estado.textContent = "Pegando a localização...";
+function titulo(texto) {
+  return String(texto || "").toLowerCase().replace(/(^|\s)\S/g, (l) => l.toUpperCase());
+}
+
+async function marcar(indice, situacao, motivo, observacao, cartao, voltaram) {
+  cartao.querySelectorAll("button").forEach((b) => (b.disabled = true));
+  const aviso = el("div", "erro-campo", "Pegando a localização...");
+  cartao.append(aviso);
   const local = await pegarLocalizacao();
   const parada = rota.p[indice];
   const marca = { s: situacao, m: motivo || "", o: observacao || "", t: Math.floor(Date.now() / 1000) };
+  if (voltaram) marca.v = voltaram;
   if (local) {
     marca.dm = distanciaMetros(local.lat, local.lon, parada[6], parada[7]);
     marca.ac = local.precisao;
   }
   marcas[indice] = marca;
+  abertaFalha = null;
+  abertaParcial = null;
   salvar();
-  desenhar();
+  desenhar(true);
 }
 
 function desfazer(indice) {
   delete marcas[indice];
   salvar();
-  desenhar();
+  desenhar(false);
 }
 
-function cartaoParada(parada, indice) {
-  const [filial, orcamento, loja, cliente, endereco, bairro, lat, lon] = parada;
-  const marca = marcas[indice];
-  const cartao = el("section", "parada" + (marca ? (marca.s === "E" ? " ok" : " falha") : ""));
-  const topo = el("div", "topo");
-  topo.append(el("span", "num", `Parada ${indice + 1}`), el("span", "ref", `Loja ${loja} · Orç. ${orcamento}`));
-  cartao.append(topo, el("div", "cliente", cliente || "Cliente não informado"),
-                el("div", "endereco", [endereco, bairro].filter(Boolean).join(" · ")));
-  const mapa = el("a", "mapa", "Abrir no mapa");
-  mapa.href = `https://www.google.com/maps/search/?api=1&query=${lat},${lon}`;
-  mapa.target = "_blank";
-  mapa.rel = "noopener";
-  cartao.append(mapa);
-  const estado = el("div", "estado");
-  cartao.append(estado);
+function frase(texto) {
+  const t = String(texto || "").trim();
+  return t ? t.charAt(0).toUpperCase() + t.slice(1) : "";
+}
 
-  if (marca) {
-    const texto = marca.s === "E" ? "Entregue" : `Não entregue: ${marca.m}`;
-    estado.innerHTML = "";
-    estado.append(el("b", "", texto), document.createTextNode(` às ${hora(marca.t)}`));
-    if (marca.o) estado.append(el("div", "", `Obs.: ${marca.o}`));
-    if (marca.dm === undefined) estado.append(el("div", "aviso", "Sem localização: confira se o GPS está ligado."));
-    const acoes = el("div", "acoes");
-    const botao = el("button", "neutro", "Desfazer");
-    botao.type = "button";
-    botao.onclick = () => desfazer(indice);
-    acoes.append(botao);
-    cartao.append(acoes);
-    return cartao;
+function iconeLink(classe, href, icone, rotulo, novaAba) {
+  const a = el("a", "mapa " + classe);
+  a.href = href;
+  if (novaAba) { a.target = "_blank"; a.rel = "noopener"; }
+  a.setAttribute("aria-label", rotulo);
+  a.innerHTML = ICONES[icone];
+  return a;
+}
+
+function cabecalho(parada, indice, selo, completo) {
+  // Links antigos têm só as 8 primeiras posições; as demais entram vazias.
+  const [, orcamento, loja, cliente, endereco, bairro, lat, lon, telefone = "", referencia = "", observacao = "",
+         produtos = []] = parada;
+  const cab = el("div", "cab");
+  cab.append(el("div", "num", String(indice + 1)));
+  const info = el("div", "info");
+  if (selo) info.append(el("div", "selo", selo));
+  info.append(el("div", "cliente", titulo(cliente) || "Cliente não informado"));
+  info.append(el("div", "endereco", titulo(endereco)));
+  info.append(el("div", "detalhes", [titulo(bairro), `Orç. ${orcamento}`, `Loja ${loja}`].filter(Boolean).join("  ·  ")));
+  if (completo && referencia) {
+    const ref = el("div", "referencia");
+    ref.append(el("b", "", "REF."), document.createTextNode(frase(referencia)));
+    info.append(ref);
   }
+  if (completo && observacao) {
+    const obs = el("div", "obs-pedido");
+    obs.append(el("b", "", "OBS."), document.createTextNode(frase(observacao)));
+    info.append(obs);
+  }
+  if (completo && produtos.length) {
+    const lista = el("ul", "produtos");
+    produtos.forEach(([qtd, descricao]) => {
+      const li = el("li");
+      li.append(el("span", "qtd", qtd ? `${qtd}x` : ""), el("span", "", descricao));
+      lista.append(li);
+    });
+    info.append(lista);
+  }
+  const lado = el("div", "lado");
+  lado.append(iconeLink("", `https://www.google.com/maps/search/?api=1&query=${lat},${lon}`, "mapa", "Abrir no mapa", true));
+  if (telefone) lado.append(iconeLink("ligar", `tel:+55${telefone}`, "ligar", "Ligar para o cliente", false));
+  cab.append(info, lado);
+  return cab;
+}
 
-  const acoes = el("div", "acoes");
-  const ok = el("button", "entregue", "Entregue");
-  const nao = el("button", "nao", "Não entregue");
-  ok.type = nao.type = "button";
-  acoes.append(ok, nao);
-  cartao.append(acoes);
-
-  const detalhe = el("div", "detalhe oculto");
-  const rotuloMotivo = el("label", "campo", "Motivo");
-  const motivo = el("select");
-  motivo.append(el("option", "", "Escolha o motivo"));
-  motivo.firstChild.value = "";
-  MOTIVOS.forEach((m) => { const o = el("option", "", m); o.value = m; motivo.append(o); });
-  const rotuloObs = el("label", "campo", "Observação (opcional)");
-  const obs = el("textarea");
-  obs.maxLength = 140;
-  const confirmar = el("button", "nao", "Confirmar não entregue");
-  confirmar.type = "button";
-  confirmar.style.width = "100%";
-  confirmar.style.marginTop = "10px";
-  detalhe.append(rotuloMotivo, motivo, rotuloObs, obs, confirmar);
-  cartao.append(detalhe);
-
-  ok.onclick = () => marcar(indice, "E", "", "", cartao);
-  nao.onclick = () => detalhe.classList.toggle("oculto");
-  confirmar.onclick = () => {
-    if (!motivo.value) { estado.textContent = "Escolha o motivo antes de confirmar."; return; }
-    if (motivo.value === "Outro" && !obs.value.trim()) { estado.textContent = "Em \"Outro\", descreva na observação."; return; }
-    marcar(indice, "N", motivo.value, obs.value.trim(), cartao);
-  };
+function cartaoFeito(parada, indice) {
+  const marca = marcas[indice];
+  const classe = { E: "", T: " parcial", N: " falha" }[marca.s] || "";
+  const cartao = el("section", "parada feita" + classe);
+  const cab = cabecalho(parada, indice, "", false);
+  cab.querySelector(".detalhes").remove();
+  const status = el("div", "status");
+  const pilula = { E: ["ok", "Entregue"], T: ["parcial", "Parcial"], N: ["falha", "Não entregue"] }[marca.s];
+  status.append(el("span", "pilula " + pilula[0], pilula[1]));
+  if (marca.s !== "E") status.append(el("span", "", marca.m));
+  status.append(el("span", "hora", hora(marca.t)));
+  const desf = el("button", "desfazer", "Desfazer");
+  desf.type = "button";
+  desf.onclick = () => desfazer(indice);
+  status.append(desf);
+  const info = cab.querySelector(".info");
+  info.append(status);
+  if (marca.o) info.append(el("div", "hora", `Obs.: ${marca.o}`));
+  if (marca.dm === undefined) info.append(el("div", "sem-gps", "Sem localização: confira se o GPS está ligado."));
+  if (marca.s === "T") {
+    const produtos = parada[11] || [];
+    info.append(el("div", "voltaram", "Voltou: " + (marca.v || []).map((i) => {
+      const [qtd, descricao] = produtos[i] || ["", ""];
+      return qtd ? `${qtd}x ${descricao}` : descricao;
+    }).join(" · ")));
+  }
+  if (marca.s === "E" || marca.s === "T") info.append(quemRecebeu(indice, marca));
+  cartao.append(cab);
   return cartao;
 }
 
-function desenhar() {
-  const total = rota.p.length;
-  const feitas = Object.keys(marcas).length;
-  app.innerHTML = "";
-  const titulo = el("h1");
-  titulo.append(document.createTextNode("Rota "), el("b", "", String(rota.r)));
-  app.append(titulo, el("p", "sub", `Entregas de ${dataBr(rota.d)}`));
-  const barra = el("div", "barra");
-  const cheio = el("i");
-  cheio.style.width = `${total ? Math.round((feitas / total) * 100) : 0}%`;
-  barra.append(cheio);
-  app.append(barra, el("div", "contagem", `${feitas} de ${total} marcadas`));
+function quemRecebeu(indice, marca) {
+  // Opcional e depois de marcar: a entrega continua sendo um toque só.
+  const bloco = el("div", "recebeu");
+  bloco.append(el("div", "rotulo", "QUEM RECEBEU (OPCIONAL)"));
+  const opcoes = el("div", "opcoes");
+  const atual = marca.r || "";
+  const tipoAtual = QUEM_RECEBEU.includes(atual) ? atual : (atual ? "Outro" : "");
+  QUEM_RECEBEU.forEach((tipo) => {
+    const o = el("button", "opcao" + (tipo === tipoAtual ? " escolhida" : ""), tipo);
+    o.type = "button";
+    o.onclick = () => {
+      marca.r = tipo === "Outro" ? (QUEM_RECEBEU.includes(atual) ? "" : atual) : (atual === tipo ? "" : tipo);
+      marca.outro = tipo === "Outro";
+      salvar();
+      desenhar(false);
+    };
+    opcoes.append(o);
+  });
+  bloco.append(opcoes);
+  if (tipoAtual === "Outro" || marca.outro) {
+    const nome = el("input");
+    nome.type = "text";
+    nome.placeholder = "Nome de quem recebeu";
+    nome.maxLength = 40;
+    nome.value = QUEM_RECEBEU.includes(atual) ? "" : atual;
+    nome.oninput = () => { marca.r = nome.value.trim(); salvar(); };
+    bloco.append(nome);
+  }
+  return bloco;
+}
 
-  const rotulo = el("label", "campo", "Seu nome");
-  const nome = el("input");
-  nome.type = "text";
-  nome.value = motorista;
-  nome.autocomplete = "name";
-  nome.oninput = () => {
-    motorista = nome.value.trim();
-    salvar();
-    try { localStorage.setItem("orbiway:motorista", motorista); } catch (e) { /* sem armazenamento */ }
+function cartaoPendente(parada, indice, proxima) {
+  const cartao = el("section", "parada" + (proxima ? " proxima" : ""));
+  cartao.id = `parada-${indice}`;
+  cartao.append(cabecalho(parada, indice, proxima ? "PRÓXIMA ENTREGA" : "", true));
+  const acoes = el("div", "acoes");
+  const ok = botao("entregue", "ok", "Entregue");
+  const nao = botao("nao" + (abertaFalha === indice ? " ativo" : ""), "nao", "Não entregue");
+  acoes.append(ok, nao);
+  cartao.append(acoes);
+  ok.onclick = () => marcar(indice, "E", "", "", cartao);
+  nao.onclick = () => { abertaFalha = abertaFalha === indice ? null : indice; abertaParcial = null; desenhar(false); };
+  const produtos = parada[11] || [];
+  if (produtos.length > 1) {
+    const parcial = el("button", "link-parcial" + (abertaParcial === indice ? " ativo" : ""),
+                       "Entregou só parte dos produtos?");
+    parcial.type = "button";
+    parcial.onclick = () => { abertaParcial = abertaParcial === indice ? null : indice; abertaFalha = null; desenhar(false); };
+    cartao.append(parcial);
+    if (abertaParcial === indice) cartao.append(painelParcial(indice, produtos, cartao));
+  }
+
+  if (abertaFalha === indice) {
+    const bloco = el("div", "motivos");
+    bloco.append(el("div", "rotulo", "MOTIVO"));
+    const opcoes = el("div", "opcoes");
+    let escolhido = "";
+    MOTIVOS.forEach((m) => {
+      const o = el("button", "opcao", m);
+      o.type = "button";
+      o.onclick = () => {
+        escolhido = m;
+        opcoes.querySelectorAll(".opcao").forEach((x) => x.classList.toggle("escolhida", x === o));
+      };
+      opcoes.append(o);
+    });
+    const obs = el("textarea");
+    obs.placeholder = "Observação (opcional)";
+    obs.maxLength = 140;
+    const erro = el("div", "erro-campo oculto");
+    const confirmar = botao("confirmar", "nao", "Confirmar não entregue");
+    confirmar.onclick = () => {
+      if (!escolhido) { erro.textContent = "Escolha o motivo."; erro.classList.remove("oculto"); return; }
+      if (escolhido === "Outro" && !obs.value.trim()) {
+        erro.textContent = "Em \"Outro\", escreva o motivo na observação."; erro.classList.remove("oculto"); return;
+      }
+      marcar(indice, "N", escolhido, obs.value.trim(), cartao);
+    };
+    bloco.append(opcoes, obs, erro, confirmar);
+    cartao.append(bloco);
+  }
+  return cartao;
+}
+
+function painelParcial(indice, produtos, cartao) {
+  const bloco = el("div", "parcial-bloco");
+  bloco.append(el("div", "rotulo", "TOQUE NOS PRODUTOS QUE VOLTARAM"));
+  const voltaram = new Set();
+  produtos.forEach(([qtd, descricao], i) => {
+    const linha = el("button", "item-volta");
+    linha.type = "button";
+    const marcador = el("span", "marcador", "ENTREGUE");
+    linha.append(marcador, el("span", "", qtd ? `${qtd}x ${descricao}` : descricao));
+    linha.onclick = () => {
+      if (voltaram.has(i)) voltaram.delete(i); else voltaram.add(i);
+      linha.classList.toggle("voltou", voltaram.has(i));
+      marcador.textContent = voltaram.has(i) ? "VOLTOU" : "ENTREGUE";
+    };
+    bloco.append(linha);
+  });
+  bloco.append(el("div", "rotulo", "MOTIVO"));
+  const opcoes = el("div", "opcoes");
+  let escolhido = "";
+  MOTIVOS_PARCIAL.forEach((m) => {
+    const o = el("button", "opcao", m);
+    o.type = "button";
+    o.onclick = () => { escolhido = m; opcoes.querySelectorAll(".opcao").forEach((x) => x.classList.toggle("escolhida", x === o)); };
+    opcoes.append(o);
+  });
+  const obs = el("textarea");
+  obs.placeholder = "Observação (opcional)";
+  obs.maxLength = 140;
+  const erro = el("div", "erro-campo oculto");
+  const confirmar = botao("confirmar-parcial", "ok", "Confirmar entrega parcial");
+  confirmar.onclick = () => {
+    const falha = (texto) => { erro.textContent = texto; erro.classList.remove("oculto"); };
+    if (!voltaram.size) return falha("Toque nos produtos que voltaram.");
+    if (voltaram.size === produtos.length) return falha("Se nenhum produto ficou, use Não entregue.");
+    if (!escolhido) return falha("Escolha o motivo.");
+    if (escolhido === "Outro" && !obs.value.trim()) return falha("Em \"Outro\", escreva o motivo na observação.");
+    marcar(indice, "T", escolhido, obs.value.trim(), cartao, [...voltaram].sort((a, b) => a - b));
   };
-  rotulo.htmlFor = nome.id = "nome";
-  app.append(rotulo, nome);
+  bloco.append(opcoes, obs, erro, confirmar);
+  return bloco;
+}
 
-  rota.p.forEach((parada, indice) => app.append(cartaoParada(parada, indice)));
+function desenharTopo() {
+  const total = rota.p.length;
+  const valores = Object.values(marcas);
+  const ok = valores.filter((m) => m.s === "E").length;
+  const parcial = valores.filter((m) => m.s === "T").length;
+  const falha = valores.length - ok - parcial;
+  document.getElementById("titulo").textContent = `Rota ${rota.r}`;
+  document.getElementById("data").textContent = dataBr(rota.d);
+  document.getElementById("barraOk").style.width = `${total ? (ok / total) * 100 : 0}%`;
+  document.getElementById("barraParcial").style.width = `${total ? (parcial / total) * 100 : 0}%`;
+  document.getElementById("barraFalha").style.width = `${total ? (falha / total) * 100 : 0}%`;
+  const cont = document.getElementById("contagens");
+  cont.innerHTML = "";
+  const faltam = total - ok - parcial - falha;
+  [["var(--verde)", ok, ok === 1 ? "entregue" : "entregues"],
+   ...(parcial ? [["var(--laranja)", parcial, parcial === 1 ? "parcial" : "parciais"]] : []),
+   ["var(--vermelho)", falha, falha === 1 ? "não entregue" : "não entregues"],
+   ["var(--suave)", faltam, faltam === 1 ? "falta" : "faltam"]]
+    .forEach(([cor, n, rotulo]) => {
+      const s = el("span");
+      const p = el("span", "ponto");
+      p.style.background = cor;
+      s.append(p, el("b", "", String(n)), document.createTextNode(" " + rotulo));
+      cont.append(s);
+    });
+  document.getElementById("topo").classList.remove("oculto");
+}
+
+function desenhar(rolarParaProxima) {
+  desenharTopo();
+  app.innerHTML = "";
+
+  // Rota com motorista definido no CD: o nome vem no link e não é editável.
+  if (rota.mo) {
+    const caixa = el("div", "motorista");
+    caixa.append(el("label", "", "Motorista"), el("span", "fixo", rota.mo));
+    app.append(caixa);
+  } else {
+    const caixa = el("div", "motorista" + (motorista ? "" : " falta"));
+    const rotulo = el("label", "", "Motorista");
+    const nome = el("input");
+    nome.type = "text";
+    nome.placeholder = "Seu nome";
+    nome.value = motorista;
+    nome.autocomplete = "name";
+    rotulo.htmlFor = nome.id = "nome";
+    nome.oninput = () => {
+      motorista = nome.value.trim();
+      caixa.classList.toggle("falta", !motorista);
+      salvar();
+      try { localStorage.setItem("orbiway:motorista", motorista); } catch (e) { /* sem armazenamento */ }
+    };
+    caixa.append(rotulo, nome);
+    app.append(caixa);
+  }
+
+  const pendentes = rota.p.map((_, i) => i).filter((i) => !marcas[i]);
+  const feitas = rota.p.map((_, i) => i).filter((i) => marcas[i]);
+  const botaoEnviar = document.getElementById("enviar");
+  if (enviadoEm) {
+    const faixa = el("div", "faixa enviada");
+    faixa.append(el("b", "", `RETORNO ENVIADO ÀS ${hora(enviadoEm)}`),
+                 document.createTextNode("Se mudar alguma marcação, toque em Reenviar retorno."));
+    app.insertBefore(faixa, app.firstChild);
+  }
+  if (!pendentes.length) {
+    const faixa = el("div", "faixa concluida");
+    faixa.append(el("b", "", "ROTA CONCLUÍDA"),
+                 document.createTextNode(enviadoEm ? "Retorno já enviado." : "Toque em Enviar retorno para mandar ao CD."));
+    app.insertBefore(faixa, app.firstChild);
+  }
+  botaoEnviar.classList.toggle("chamar", !pendentes.length && !enviadoEm);
+  botaoEnviar.lastChild.textContent = enviadoEm ? " Reenviar retorno" : " Enviar retorno";
+  pendentes.forEach((i, pos) => app.append(cartaoPendente(rota.p[i], i, pos === 0)));
+  if (feitas.length) {
+    app.append(el("div", "secao", `FEITAS (${feitas.length})`));
+    feitas.forEach((i) => app.append(cartaoFeito(rota.p[i], i)));
+  }
   document.getElementById("rodape").classList.remove("oculto");
+  if (rolarParaProxima) window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+function produtosQueVoltaram(parada, m) {
+  // Não entregue: voltou tudo. Parcial: só os marcados. Cada produto vai como [código, qtd, descrição].
+  if (!m || (m.s !== "N" && m.s !== "T")) return [];
+  const produtos = parada[11] || [];
+  const indices = m.s === "N" ? produtos.map((_, i) => i) : (m.v || []);
+  return indices.filter((i) => produtos[i]).map((i) => [produtos[i][2] || "", produtos[i][0], produtos[i][1]]);
+}
+
+function contatoParaReentrega(parada, m) {
+  if (!m || (m.s !== "N" && m.s !== "T")) return [];
+  return [parada[4] || "", parada[5] || "", parada[8] || "", parada[9] || ""];
 }
 
 async function montarRetorno() {
@@ -275,7 +626,9 @@ async function montarRetorno() {
     e: rota.p.map((parada, indice) => {
       const m = marcas[indice];
       return [parada[0], parada[1], parada[2], parada[3], m ? m.s : "P", m ? m.m : "", m ? m.o : "",
-              m ? m.t : null, m && m.dm !== undefined ? m.dm : null, m && m.ac !== undefined ? m.ac : null];
+              m ? m.t : null, m && m.dm !== undefined ? m.dm : null, m && m.ac !== undefined ? m.ac : null,
+              m && (m.s === "E" || m.s === "T") ? (m.r || "") : "",
+              produtosQueVoltaram(parada, m), contatoParaReentrega(parada, m)];
     }),
   };
   const json = new TextEncoder().encode(JSON.stringify(pacote));
@@ -286,13 +639,18 @@ async function montarRetorno() {
     codigo = "ORB0." + bytesParaB64url(json);
   }
   const entregues = pacote.e.filter((x) => x[4] === "E").length;
+  const parciais = pacote.e.filter((x) => x[4] === "T");
   const falhas = pacote.e.filter((x) => x[4] === "N");
   const pendentes = pacote.e.filter((x) => x[4] === "P").length;
   const linhas = [
     `Orbiway: retorno da rota ${rota.r} (${dataBr(rota.d)})`,
     `Motorista: ${motorista}`,
-    `Entregues: ${entregues} | Não entregues: ${falhas.length} | Sem marcação: ${pendentes}`,
+    `Entregues: ${entregues} | Parciais: ${parciais.length} | Não entregues: ${falhas.length} | Sem marcação: ${pendentes}`,
   ];
+  if (parciais.length) {
+    linhas.push("Entregas parciais:");
+    parciais.forEach((x) => linhas.push(`- ${x[1]} ${x[3] || ""}: voltou ${x[11].map((p) => `${p[1]}x ${p[2]}`).join(", ")} (${x[5]})`));
+  }
   if (falhas.length) {
     linhas.push("Não entregues:");
     falhas.forEach((x) => linhas.push(`- ${x[1]} ${x[3] || ""}: ${x[5]}`.replace(/\s+:/, ":")));
@@ -307,20 +665,23 @@ document.getElementById("enviar").onclick = async () => {
   if (!motorista) {
     aviso.textContent = "Preencha seu nome no topo antes de enviar.";
     aviso.classList.remove("oculto");
+    window.scrollTo({ top: 0, behavior: "smooth" });
     document.getElementById("nome").focus();
     return;
   }
   const pendentes = rota.p.length - Object.keys(marcas).length;
-  const botao = document.getElementById("enviar");
+  const botaoEnviar = document.getElementById("enviar");
   // Primeiro toque com parada sem marcação só avisa; o segundo envia assim mesmo.
-  if (pendentes && !botao.dataset.confirmado) {
+  if (pendentes && !botaoEnviar.dataset.confirmado) {
     aviso.textContent = `${pendentes} parada(s) sem marcação. Toque de novo para enviar assim mesmo.`;
     aviso.classList.remove("oculto");
-    botao.dataset.confirmado = "1";
+    botaoEnviar.dataset.confirmado = "1";
     return;
   }
-  delete botao.dataset.confirmado;
+  delete botaoEnviar.dataset.confirmado;
   const texto = await montarRetorno();
+  enviadoEm = Math.floor(Date.now() / 1000);
+  salvar();
   location.href = `https://wa.me/${rota.w}?text=${encodeURIComponent(texto)}`;
 };
 
@@ -330,11 +691,12 @@ document.getElementById("enviar").onclick = async () => {
     if (!rota || rota.v !== 1 || !Array.isArray(rota.p)) throw new Error("Link inválido. Peça um novo link para o CD.");
     chaveLocal = `orbiway:${rota.id}`;
     carregar();
-    desenhar();
+    if (rota.mo) motorista = rota.mo;
+    desenhar(false);
   } catch (erro) {
     app.innerHTML = "";
     const caixa = el("div", "erro");
-    caixa.append(el("h1", "", "Não foi possível abrir a rota"), el("p", "sub", erro.message || String(erro)));
+    caixa.append(el("h2", "", "Não foi possível abrir a rota"), el("p", "", erro.message || String(erro)));
     app.append(caixa);
   }
 })();
