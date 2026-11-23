@@ -156,6 +156,9 @@
   .erro { background: var(--card); border: 1px solid var(--vermelho); border-radius: 16px; padding: 20px; margin-top: 30px; }
   .erro h2 { font-family: var(--titulo); margin: 0 0 6px; font-size: 1.3rem; }
   .erro p { color: var(--suave); margin: 0; }
+  .erro .colar-passos { margin-top: 14px; color: var(--texto); }
+  .colar-campo { width: 100%; margin-top: 12px; min-height: 90px; resize: vertical; background: var(--card-2); color: var(--texto);
+    border: 1px solid var(--linha); border-radius: 12px; padding: 10px 12px; font: inherit; font-size: .9rem; }
   .carregando { color: var(--suave); text-align: center; margin-top: 40px; }
 </style>
 </head>
@@ -222,15 +225,89 @@ async function passarPorStream(bytes, stream) {
   return new Uint8Array(await new Response(saida).arrayBuffer());
 }
 
-async function lerRotaDoLink() {
-  // Os dados vêm depois do "#": o navegador não envia essa parte para o servidor.
-  const fragmento = location.hash.slice(1);
-  if (!fragmento.startsWith("z.")) throw new Error("Link incompleto. Peça um novo link para o CD.");
+const LINK_CORTADO = "O WhatsApp do celular cortou o link (a rota é grande). Copie a mensagem da rota e cole aqui embaixo.";
+
+// Aceita tanto o fragmento do link quanto a mensagem inteira colada do WhatsApp.
+function codigoDaRota(texto) {
+  let bruto = String(texto || "");
+  try { bruto = decodeURIComponent(bruto); } catch (e) { /* já veio sem %XX */ }
+  const inicio = bruto.indexOf("#z.");
+  if (inicio >= 0) bruto = bruto.slice(inicio + 3);
+  else if (bruto.startsWith("z.")) bruto = bruto.slice(2);
+  else return "";
+  // Celular às vezes troca - e _ ou quebra a linha no meio do link copiado.
+  return bruto.replace(/\+/g, "-").replace(/\//g, "_").replace(/[^A-Za-z0-9_-]/g, "");
+}
+
+async function abrirCodigo(codigo) {
+  if (!codigo) throw new Error(LINK_CORTADO);
   if (typeof DecompressionStream === "undefined") {
     throw new Error("Este navegador está desatualizado. Atualize o Chrome (ou o Safari) e abra o link de novo.");
   }
-  const bytes = await passarPorStream(b64urlParaBytes(fragmento.slice(2)), new DecompressionStream("deflate"));
-  return JSON.parse(new TextDecoder().decode(bytes));
+  let dados;
+  try {
+    const bytes = await passarPorStream(b64urlParaBytes(codigo), new DecompressionStream("deflate"));
+    dados = JSON.parse(new TextDecoder().decode(bytes));
+  } catch (e) {
+    throw new Error(LINK_CORTADO);
+  }
+  if (!dados || dados.v !== 1 || !Array.isArray(dados.p)) throw new Error("Link inválido. Peça um novo link para o CD.");
+  return dados;
+}
+
+async function lerRotaDoLink() {
+  // Os dados vêm depois do "#": o navegador não envia essa parte para o servidor.
+  return abrirCodigo(codigoDaRota(location.hash));
+}
+
+function iniciarRota(dados, codigo) {
+  rota = dados;
+  if (codigo && location.hash !== "#z." + codigo) history.replaceState(null, "", "#z." + codigo);
+  chaveLocal = `orbiway:${rota.id}`;
+  carregar();
+  if (rota.mo) motorista = rota.mo;
+  app.innerHTML = "";
+  desenhar(false);
+}
+
+function mostrarColagem(mensagem) {
+  app.innerHTML = "";
+  const caixa = el("div", "erro");
+  caixa.append(el("h2", "", "Não foi possível abrir a rota"), el("p", "", mensagem));
+  const passos = el("p", "colar-passos",
+    "No WhatsApp, segure o dedo na mensagem da rota, toque em Copiar, volte aqui e toque em Colar mensagem.");
+  const campo = el("textarea", "colar-campo");
+  campo.placeholder = "Ou cole aqui a mensagem da rota";
+  const aviso = el("p", "erro-campo");
+  aviso.hidden = true;
+
+  const tentar = async (texto) => {
+    const codigo = codigoDaRota(texto);
+    try {
+      iniciarRota(await abrirCodigo(codigo), codigo);
+    } catch (e) {
+      aviso.textContent = codigo ? e.message : "Não achei o link da rota nesse texto. Copie a mensagem inteira.";
+      aviso.hidden = false;
+    }
+  };
+
+  const colar = botao("confirmar", "", "Colar mensagem");
+  colar.onclick = async () => {
+    try {
+      const texto = await navigator.clipboard.readText();
+      campo.value = texto;
+      await tentar(texto);
+    } catch (e) {
+      // Sem permissão de leitura da área de transferência: cola na mão.
+      campo.focus();
+      aviso.textContent = "Segure o dedo no campo acima e toque em Colar.";
+      aviso.hidden = false;
+    }
+  };
+  campo.addEventListener("input", () => { if (campo.value.includes("z.")) tentar(campo.value); });
+
+  caixa.append(passos, campo, aviso, colar);
+  app.append(caixa);
 }
 
 function salvar() {
@@ -687,17 +764,9 @@ document.getElementById("enviar").onclick = async () => {
 
 (async () => {
   try {
-    rota = await lerRotaDoLink();
-    if (!rota || rota.v !== 1 || !Array.isArray(rota.p)) throw new Error("Link inválido. Peça um novo link para o CD.");
-    chaveLocal = `orbiway:${rota.id}`;
-    carregar();
-    if (rota.mo) motorista = rota.mo;
-    desenhar(false);
+    iniciarRota(await lerRotaDoLink(), "");
   } catch (erro) {
-    app.innerHTML = "";
-    const caixa = el("div", "erro");
-    caixa.append(el("h2", "", "Não foi possível abrir a rota"), el("p", "", erro.message || String(erro)));
-    app.append(caixa);
+    mostrarColagem(erro.message || String(erro));
   }
 })();
 </script>
